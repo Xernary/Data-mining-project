@@ -33,7 +33,8 @@ for (i in 1:nrow(pt1_data)){
 
 pt2_data <- pt1_data
 
-pt2_data <- pt1_data[!duplicated(pt1_data[, 104]), ]
+# gets the first 14 unique rows based on the labels only
+pt2_data <- pt1_data[!duplicated(pt1_data[, 104:117]), ]
 
 
 
