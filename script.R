@@ -37,6 +37,35 @@ pt2_data <- pt1_data
 pt2_data <- pt1_data[!duplicated(pt1_data[, 104:117]), ]
 
 
+# PT3
+
+pt3_data <- data
+ 
+for (i in 1:nrow(pt3_data)){
+  
+  
+  #get all the values of the labels of the current row
+  row.labels <- as.numeric(pt3_data[i, 104:117]) - 1
+  
+  #get only the labels that are set as 1 of the current row
+  row.correct.labels <- as.vector(which(row.labels==1))
+  
+  col.name <- ''
+  c <- 1
+  for(j in row.correct.labels){
+    temp <- paste('∩', as.character(j))
+    if(c == 1) temp <- as.character(j)
+    col.name <- paste(col.name, temp)
+    c <- c+1
+  }
+
+  # add new column made up of label set of the instance
+  pt3_data[i, col.name] <- 1
+  
+}
+
+# remove old label columns
+pt3_data <- pt3_data[, -104:-117]
 
 
 
