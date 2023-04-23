@@ -53,9 +53,9 @@ for (i in 1:nrow(pt3_data)){
   col.name <- ''
   c <- 1
   for(j in row.correct.labels){
-    temp <- paste('∩', as.character(j))
-    if(c == 1) temp <- as.character(j)
-    col.name <- paste(col.name, temp)
+    temp <- paste('∩', paste('Class' , as.character(j), sep = ''), sep = '')
+    if(c == 1) temp <- paste('Class' , as.character(j), sep = '')
+    col.name <- paste(col.name, temp, sep = '')
     c <- c+1
   }
 
