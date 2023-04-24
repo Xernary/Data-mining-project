@@ -3,8 +3,6 @@ library(foreign)
 data <- read.arff("yeast.arff")
 
 
-
-
 # PT1, PT2, PT3 implementations. PT = problem transformation from multi-lable to single-lable
 
 # PT1
@@ -29,12 +27,14 @@ for (i in 1:nrow(pt1_data)){
 }
 
 
+
 # PT2
 
 pt2_data <- pt1_data
 
 # gets the first 14 unique rows based on the labels only
 pt2_data <- pt1_data[!duplicated(pt1_data[, 104:117]), ]
+
 
 
 # PT3
@@ -57,6 +57,8 @@ for (i in 1:nrow(pt3_data)){
     if(c == 1) temp <- paste('Class' , as.character(j), sep = '')
     col.name <- paste(col.name, temp, sep = '')
     c <- c+1
+    
+    print(j)
   }
 
   # add new column made up of label set of the instance
@@ -66,6 +68,31 @@ for (i in 1:nrow(pt3_data)){
 
 # remove old label columns
 pt3_data <- pt3_data[, -104:-117]
+
+
+# PT4
+
+
+
+# Binary Relevance 
+
+# create n different datasets each containing only one label,
+# where n is the number of total labels of the original dataset
+
+br_data <- list()
+arr <- list()
+for(i in 1:14){
+  column <- paste('Class', i, sep = '')
+  arr[[i]] <- data[column]
+  br_data[[i]] <- data[-104:-117]
+  br_data[[i]][column] <- arr[[i]]
+}
+
+
+
+
+
+
 
 
 
