@@ -79,7 +79,7 @@ pt3.data <- pt3.data[, -104:-117]
 # create n different datasets each containing only one label,
 # where n is the number of total labels of the original dataset
 
-br_data <- list()
+br.data <- list()
 arr <- list()
 for(i in 1:14){
   column <- paste('Class', i, sep = '')
@@ -127,8 +127,8 @@ sampled.pos <- sample(1:nrow(pt1.data.2),nobs.training)
 pt1.training <- pt1.data.2[sampled.pos,]
 pt1.testing <- pt1.data.2[-sampled.pos,]
 #Nascondiamo la classe di appartenenza nel test set
-true.classes <- pt1.testing[,10]
-pt1.testing <- pt1.testing[,-10]
+true.classes <- pt1.testing[,104]
+pt1.testing <- pt1.testing[,-104]
 
 
 #1) CART
@@ -141,7 +141,7 @@ library(rpart.plot)
 #Vogliamo classificare la tipologia di tumore (campo "Class" in funzione degli altri attributi)
 #cp = “value” is the assigned a numeric value that will determine how deep you want your tree to grow.
 #The smaller the value (closer to 0), the larger the tree. The default value is 0.01, which will render a very pruned tree.
-pt1.cart <- rpart(Class ~ ., data = pt1.training, cp = 0.005)
+pt1.cart <- rpart(Class ~ ., data = pt1.training,  cp = 0.001) 
 
 #Stampo l'albero decisionale ottenuto in forma testuale
 pt1.cart
@@ -153,8 +153,19 @@ pt1.cart
 #(rpart effettua al suo interno una cross-validation)
 printcp(pt1.cart)
 
-#Visualizzo graficamente l'albero
 rpart.plot(pt1.cart)
+
+
+
+rpart.plot(pt1.cart, type = 0, extra = 104)
+
+pt1.cart$cptable
+
+plotcp(pt1.cart)
+
+rpart.rules(pt1.cart,cover = T)
+
+#PRUNING 
 
 #Selezioniamo il CP col numero minimo k di split che garantisce un errore relativo accettabile,
 #Scegliamo il minimo k tale che relerror+xstd < xerror
@@ -165,8 +176,23 @@ pt1.cart.pruned <- prune(pt1.cart, cp=best.cp)
 #Visualizziamo l'albero ottenuto
 rpart.plot(pt1.cart.pruned, type = 0, extra = 104)
 
+rpart.rules(pt1.cart.pruned,cover = T)
 
 
+# ACCURACY 
+
+#Predico le classi sul test set
+#Restituisci una tabella con le probabilit? di appartenere ad ognuna delle classi
+predict(pt1.cart.pruned, pt1.testing)
+#Restituisci la classe pi? probabile. Usiamo il metodo generale di predizione
+cart.predict <- predict(pt1.cart,pt1.testing,type="class")
+cart.predict.pruned <- predict(pt1.cart.pruned,pt1.testing,type="class")
+#Confrontiamo classe predetta con classe reale
+cart.results <- data.frame(real=true.classes,predicted=cart.predict)
+cart.pruned.results <- data.frame(real=true.classes,predicted=cart.predict.pruned)
+#Calcoliamo l'accuratezza
+cart.accuracy <- sum(cart.results$real==cart.results$predicted)/nrow(cart.results)
+cart.pruned.accuracy <- sum(cart.pruned.results$real==cart.pruned.results$predicted)/nrow(cart.pruned.results)
 
 
 
