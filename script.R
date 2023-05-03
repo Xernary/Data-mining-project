@@ -53,8 +53,8 @@ for (i in 1:nrow(pt3.data)){
   col.name <- ''
   c <- 1
   for(j in row.correct.labels){
-    temp <- paste('∩', paste('Class' , as.character(j), sep = ''), sep = '')
-    if(c == 1) temp <- paste('Class' , as.character(j), sep = '')
+    temp <- paste('∩', paste('class' , as.character(j), sep = ''), sep = '')
+    if(c == 1) temp <- paste('class' , as.character(j), sep = '')
     col.name <- paste(col.name, temp, sep = '')
     c <- c+1
     
@@ -68,6 +68,10 @@ for (i in 1:nrow(pt3.data)){
 
 # remove old label columns
 pt3.data <- pt3.data[, -104:-117]
+
+
+pt3.data[is.na(pt3.data)] <- 0
+
 
 
 # PT4
@@ -94,13 +98,13 @@ for(i in 1:14){
 
 # to do
 
-
+#-----------------------------------------------------------------------------------------
 
 # Classification CART
 
 # CART on PT1 
 
-pt1.data.2 <- pt1_data[, -104:-117]
+pt1.data.2 <- pt1.data[, -104:-117]
 
 for(i in 1:nrow(pt1.data.2 )){
   
@@ -193,6 +197,198 @@ cart.pruned.results <- data.frame(real=true.classes,predicted=cart.predict.prune
 #Calcoliamo l'accuratezza
 cart.accuracy <- sum(cart.results$real==cart.results$predicted)/nrow(cart.results)
 cart.pruned.accuracy <- sum(cart.pruned.results$real==cart.pruned.results$predicted)/nrow(cart.pruned.results)
+
+#--------------------------------------------------------------------------------------------------
+
+# CART on PT2
+
+pt2.data.2 <- pt2_data[, -104:-117]
+
+for(i in 1:nrow(pt2.data.2 )){
+  
+  #get all the values of the labels of the current row
+  row.labels <- as.numeric(pt2.data[i, 104:117]) - 1
+  
+  #get only the label that is set as 1 of the current row
+  row.correct.label <- as.numeric(which(row.labels==1))
+  
+  #add the new class label column
+  pt2.data.2 [i, "Class"] <- as.character(row.correct.label)  #pt1_data[i,(pt1_data[1, ]) == 1] #paste("Class", pt1_data[i, ], sep="")
+}
+
+
+
+
+#all the dataset will be used so perc.splitting = 1
+#only the 13 tuples with unique classes will be used for training (pt2.data.2)
+#the full dataset will be used as testing (pt1.data.2)
+perc.splitting <- 1
+#Calcoliamo il numero di tuple nel training set
+nobs.training <- round(perc.splitting*nrow(pt2.data.2))
+sampled.pos <- sample(1:nrow(pt2.data.2),nobs.training)
+pt2.training <- pt2.data.2[sampled.pos,]
+pt2.testing <- pt1.data.2
+true.classes <- pt2.testing[,104]
+pt2.testing <- pt2.testing[,-104]
+
+
+#1) CART
+
+
+#Vogliamo classificare la tipologia di tumore (campo "Class" in funzione degli altri attributi)
+#cp = “value” is the assigned a numeric value that will determine how deep you want your tree to grow.
+#The smaller the value (closer to 0), the larger the tree. The default value is 0.01, which will render a very pruned tree.
+pt2.cart <- rpart(Class ~ ., data = pt2.training,  cp = 0.001)
+
+#Stampo l'albero decisionale ottenuto in forma testuale
+pt2.cart
+#Per avere maggiori informazioni pi? accurate si pu? usare il metodo "printcp"
+#che mostra anche il cost-complexity pruning (CP)
+#nsplit ? il numero di split necessari per arrivare ad un nodo dell'albero
+#relerror ? l'errore relativo
+#xerror e xstd sono media e deviazione standard del cross-validation error
+#(rpart effettua al suo interno una cross-validation)
+printcp(pt2.cart)
+
+rpart.plot(pt2.cart, box.palette="Blues")
+
+
+
+rpart.plot(pt2.cart, type = 0, extra = 104, box.palette="Blues")
+
+pt2.cart$cptable
+
+plotcp(pt2.cart)
+
+rpart.rules(pt2.cart,cover = T)
+
+#PRUNING 
+
+#Selezioniamo il CP col numero minimo k di split che garantisce un errore relativo accettabile,
+#Scegliamo il minimo k tale che relerror+xstd < xerror
+#Nel nostro caso k=1 (ovvero size of tree=2).
+best.cp <- pt2.cart$cptable[2,"CP"]
+#Effettuiamo il pruning dell'albero con CP associato
+pt2.cart.pruned <- prune(pt2.cart, cp=best.cp)
+#Visualizziamo l'albero ottenuto
+rpart.plot(pt2.cart.pruned, type = 0, extra = 104, box.palette="Blues")
+
+rpart.rules(pt2.cart.pruned,cover = T)
+
+
+# ACCURACY 
+
+#Predico le classi sul test set
+#Restituisci una tabella con le probabilit? di appartenere ad ognuna delle classi
+predict(pt2.cart.pruned, pt2.testing)
+#Restituisci la classe pi? probabile. Usiamo il metodo generale di predizione
+cart.predict <- predict(pt2.cart,pt2.testing,type="class")
+cart.predict.pruned <- predict(pt2.cart.pruned,pt2.testing,type="class")
+#Confrontiamo classe predetta con classe reale
+cart.results <- data.frame(real=true.classes,predicted=cart.predict)
+cart.pruned.results <- data.frame(real=true.classes,predicted=cart.predict.pruned)
+#Calcoliamo l'accuratezza
+cart.accuracy <- sum(cart.results$real==cart.results$predicted)/nrow(cart.results)
+cart.pruned.accuracy <- sum(cart.pruned.results$real==cart.pruned.results$predicted)/nrow(cart.pruned.results)
+
+#-----------------------------------------------------------------------------------------------
+
+# CART on PT3
+
+pt3.data.2 <- pt3.data[, -104:-ncol(pt3.data)]
+
+
+for(i in 1:nrow(pt3.data.2)){
+  
+  #get all the values of the labels of the current row
+  row.labels <- as.numeric(pt3.data[i, 104:ncol(pt3.data)]) 
+  
+  #get only the label that is set as 1 of the current row
+  row.correct.label <- as.numeric(which(row.labels==1))
+  
+  #add the new class label column
+  pt3.data.2[i, "Class"] <- as.character(row.correct.label)  #pt1_data[i,(pt1_data[1, ]) == 1] #paste("Class", pt1_data[i, ], sep="")
+
+}
+
+#Separiamo i dati in due partizioni: training (75%) e test set (25%) con tuple scelte a caso
+perc.splitting <- 0.75
+#Calcoliamo il numero di tuple nel training set
+nobs.training <- round(perc.splitting*nrow(pt3.data.2))
+#Campioniamo in maniera random le tuple
+sampled.pos <- sample(1:nrow(pt3.data.2),nobs.training)
+#Effettuiamo il partizionamento
+pt3.training <- pt3.data.2[sampled.pos,]
+pt3.testing <- pt3.data.2[-sampled.pos,]
+#Nascondiamo la classe di appartenenza nel test set
+true.classes <- pt3.testing[,104]
+pt3.testing <- pt3.testing[,-104]
+
+
+#1) CART
+
+#Carico le libreria necessaria
+library(rpart)
+#Carichiamo anche rpart.plot per la visualizzazione
+library(rpart.plot)
+
+#Vogliamo classificare la tipologia di tumore (campo "Class" in funzione degli altri attributi)
+#cp = “value” is the assigned a numeric value that will determine how deep you want your tree to grow.
+#The smaller the value (closer to 0), the larger the tree. The default value is 0.01, which will render a very pruned tree.
+pt3.cart <- rpart(Class ~ ., data = pt3.training,  cp = 0.001) 
+
+#Stampo l'albero decisionale ottenuto in forma testuale
+pt3.cart
+#Per avere maggiori informazioni pi? accurate si pu? usare il metodo "printcp"
+#che mostra anche il cost-complexity pruning (CP)
+#nsplit ? il numero di split necessari per arrivare ad un nodo dell'albero
+#relerror ? l'errore relativo
+#xerror e xstd sono media e deviazione standard del cross-validation error
+#(rpart effettua al suo interno una cross-validation)
+printcp(pt3.cart)
+
+rpart.plot(pt3.cart)
+
+
+
+rpart.plot(pt3.cart, type = 0, extra = 104)
+
+pt3.cart$cptable
+
+plotcp(pt3.cart)
+
+rpart.rules(pt3.cart,cover = T)
+
+#PRUNING 
+
+#Selezioniamo il CP col numero minimo k di split che garantisce un errore relativo accettabile,
+#Scegliamo il minimo k tale che relerror+xstd < xerror
+#Nel nostro caso k=1 (ovvero size of tree=2).
+best.cp <- pt3.cart$cptable[20,"CP"]
+#Effettuiamo il pruning dell'albero con CP associato
+pt3.cart.pruned <- prune(pt3.cart, cp=best.cp)
+#Visualizziamo l'albero ottenuto
+rpart.plot(pt3.cart.pruned, type = 0, extra = 104)
+
+rpart.rules(pt3.cart.pruned,cover = T)
+
+
+# ACCURACY 
+
+#Predico le classi sul test set
+#Restituisci una tabella con le probabilit? di appartenere ad ognuna delle classi
+predict(pt3.cart.pruned, pt3.testing)
+#Restituisci la classe pi? probabile. Usiamo il metodo generale di predizione
+cart.predict <- predict(pt3.cart,pt3.testing,type="class")
+cart.predict.pruned <- predict(pt3.cart.pruned,pt3.testing,type="class")
+#Confrontiamo classe predetta con classe reale
+cart.results <- data.frame(real=true.classes,predicted=cart.predict)
+cart.pruned.results <- data.frame(real=true.classes,predicted=cart.predict.pruned)
+#Calcoliamo l'accuratezza
+cart.accuracy <- sum(cart.results$real==cart.results$predicted)/nrow(cart.results)
+cart.pruned.accuracy <- sum(cart.pruned.results$real==cart.pruned.results$predicted)/nrow(cart.pruned.results)
+
+#--------------------------------------------------------------------------------------------------
 
 
 
