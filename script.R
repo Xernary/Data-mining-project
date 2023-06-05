@@ -76,6 +76,19 @@ pt3.data[is.na(pt3.data)] <- 0
 
 # PT4
 
+pt4.data <- data[, -104:-117]
+
+tmp.data <- data[, 104:117]
+
+for(i in 1:14){
+  colnames(tmp.data)[which(names(tmp.data) == paste("Class", as.character(i), sep=""))] <- paste("Class", as.character(i), sep="")
+}
+
+
+for(i in 1:14){
+  pt4.data[paste("Class", as.character(i), sep='')] <- (data[paste("Class", as.character(i), sep='')])
+  pt4.data[paste("⌐Class", as.character(i), sep='')] <- (data[paste("Class", as.character(i), sep='')])
+}
 
 
 # Binary Relevance 
@@ -195,8 +208,37 @@ cart.predict.pruned <- predict(pt1.cart.pruned,pt1.testing,type="class")
 cart.results <- data.frame(real=true.classes,predicted=cart.predict)
 cart.pruned.results <- data.frame(real=true.classes,predicted=cart.predict.pruned)
 #Calcoliamo l'accuratezza
-cart.accuracy <- sum(cart.results$real==cart.results$predicted)/nrow(cart.results)
+cart.accuracy <- sum(c==cart.results$predicted)/nrow(cart.results)
 cart.pruned.accuracy <- sum(cart.pruned.results$real==cart.pruned.results$predicted)/nrow(cart.pruned.results)
+
+
+
+# JACCARD SIMILARITY
+
+calculate.jaccard <- function(tranformated.data.classes){
+  data.true.classes <- data[, 104:117]
+  total.jaccard <- 0
+  row.jaccard <- 0
+  pt1.jaccart <- 0
+  for(i in 1:nrow(data.true.classes)){
+    a <- 0
+    b <- 0
+    c <- 0
+    for(j in 1:ncol(data.true.classes)){
+      if((data.true.classes[i,j] == tranformated.data.classes[i,j]) && tranformated.data.classes[i,j] == 1) {a <- a+1}
+      else if(data.true.classes[i,j] == 0 && tranformated.data.classes[i,j] == 1) {b <- b+1}
+      else if(data.true.classes[i,j] == 1 && tranformated.data.classes[i,j] == 0) {c <- c+1}
+    }
+    print(a / (a + b + c))
+    row.jaccard <- a / (a + b + c)
+    total.jaccard <- total.jaccard + row.jaccard
+  }
+  return (total.jaccard / nrow(data.true.classes))
+}
+
+jaccard <- calculate.jaccard(pt1.data[, 104:117])
+
+
 
 #--------------------------------------------------------------------------------------------------
 
@@ -390,5 +432,9 @@ cart.pruned.accuracy <- sum(cart.pruned.results$real==cart.pruned.results$predic
 
 #--------------------------------------------------------------------------------------------------
 
+
+# CART on PT4 (not applicable because instances have more than one label)
+
+library(e1071)
 
 
