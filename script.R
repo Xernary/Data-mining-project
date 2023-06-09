@@ -56,6 +56,8 @@ for (i in 1:nrow(pt3.data)){
     temp <- paste('∩', paste('class' , as.character(j), sep = ''), sep = '')
     if(c == 1) temp <- paste('class' , as.character(j), sep = '')
     col.name <- paste(col.name, temp, sep = '')
+    # added
+    col.name <- paste(col.name, '_', sep = '')
     c <- c+1
     
     print(j)
@@ -128,7 +130,7 @@ for(i in 1:nrow(pt1.data.2 )){
   row.correct.label <- as.numeric(which(row.labels==1))
   
   #add the new class label column
-  pt1.data.2 [i, "Class"] <- as.character(row.correct.label)  #pt1_data[i,(pt1_data[1, ]) == 1] #paste("Class", pt1_data[i, ], sep="")
+  pt1.data.2[i, "Class"] <- as.character(row.correct.label)  #pt1_data[i,(pt1_data[1, ]) == 1] #paste("Class", pt1_data[i, ], sep="")
 }
 
 
@@ -138,7 +140,7 @@ for(i in 1:nrow(pt1.data.2 )){
 perc.splitting <- 0.75
 #Calcoliamo il numero di tuple nel training set
 nobs.training <- round(perc.splitting*nrow(pt1.data.2))
-#Campioniamo in maniera random le tuple
+#Campioniamo in maniera RANDOM le tuple
 sampled.pos <- sample(1:nrow(pt1.data.2),nobs.training)
 #Effettuiamo il partizionamento
 pt1.training <- pt1.data.2[sampled.pos,]
@@ -146,6 +148,8 @@ pt1.testing <- pt1.data.2[-sampled.pos,]
 #Nascondiamo la classe di appartenenza nel test set
 true.classes <- pt1.testing[,104]
 pt1.testing <- pt1.testing[,-104]
+
+idk<-pt1.data.2[-sampled.pos,]
 
 
 #1) CART
@@ -155,7 +159,6 @@ library(rpart)
 #Carichiamo anche rpart.plot per la visualizzazione
 library(rpart.plot)
 
-#Vogliamo classificare la tipologia di tumore (campo "Class" in funzione degli altri attributi)
 #cp = “value” is the assigned a numeric value that will determine how deep you want your tree to grow.
 #The smaller the value (closer to 0), the larger the tree. The default value is 0.01, which will render a very pruned tree.
 pt1.cart <- rpart(Class ~ ., data = pt1.training,  cp = 0.001) 
@@ -172,11 +175,12 @@ printcp(pt1.cart)
 
 rpart.plot(pt1.cart)
 
-
-
 rpart.plot(pt1.cart, type = 0, extra = 104)
 
+# cp and error info
 pt1.cart$cptable
+
+
 
 plotcp(pt1.cart)
 
@@ -187,7 +191,7 @@ rpart.rules(pt1.cart,cover = T)
 #Selezioniamo il CP col numero minimo k di split che garantisce un errore relativo accettabile,
 #Scegliamo il minimo k tale che relerror+xstd < xerror
 #Nel nostro caso k=1 (ovvero size of tree=2).
-best.cp <- pt1.cart$cptable[6,"CP"]
+best.cp <- pt1.cart$cptable[2,"CP"]
 #Effettuiamo il pruning dell'albero con CP associato
 pt1.cart.pruned <- prune(pt1.cart, cp=best.cp)
 #Visualizziamo l'albero ottenuto
@@ -212,22 +216,30 @@ cart.accuracy <- sum(c==cart.results$predicted)/nrow(cart.results)
 cart.pruned.accuracy <- sum(cart.pruned.results$real==cart.pruned.results$predicted)/nrow(cart.pruned.results)
 
 
+# Data conversion from single-lable to multi-lable format
+
+# converts pt1 predicted data to multi-label formal
+pt1.predicted.multi <- data.frame(matrix(nrow=nrow(cart.pruned.results), ncol=14))
+for(i in 1:nrow(cart.pruned.results)){
+  pt1.predicted.multi[i,] <- 0
+  pt1.predicted.multi[i, as.numeric(as.character(cart.pruned.results[i,2]))] <- 1
+}
+
 
 # JACCARD SIMILARITY
 
-calculate.jaccard <- function(tranformated.data.classes){
-  data.true.classes <- data[, 104:117]
+# calculate jaccard similarity of data in multi-label format
+calculate.jaccard <- function(predicted.data.classes, true.data.classes){
   total.jaccard <- 0
   row.jaccard <- 0
-  pt1.jaccart <- 0
-  for(i in 1:nrow(data.true.classes)){
+  for(i in 1:nrow(true.data.classes)){
     a <- 0
     b <- 0
     c <- 0
-    for(j in 1:ncol(data.true.classes)){
-      if((data.true.classes[i,j] == tranformated.data.classes[i,j]) && tranformated.data.classes[i,j] == 1) {a <- a+1}
-      else if(data.true.classes[i,j] == 0 && tranformated.data.classes[i,j] == 1) {b <- b+1}
-      else if(data.true.classes[i,j] == 1 && tranformated.data.classes[i,j] == 0) {c <- c+1}
+    for(j in 1:ncol(true.data.classes)){
+      if((true.data.classes[i,j] == predicted.data.classes[i,j]) && predicted.data.classes[i,j] == 1) {a <- a+1}
+      else if(true.data.classes[i,j] == 0 && predicted.data.classes[i,j] == 1) {b <- b+1}
+      else if(true.data.classes[i,j] == 1 && predicted.data.classes[i,j] == 0) {c <- c+1}
     }
     print(a / (a + b + c))
     row.jaccard <- a / (a + b + c)
@@ -236,8 +248,8 @@ calculate.jaccard <- function(tranformated.data.classes){
   return (total.jaccard / nrow(data.true.classes))
 }
 
-jaccard <- calculate.jaccard(pt1.data[, 104:117])
-
+pt1.true.multi <- data[-sampled.pos,]
+jaccard <- calculate.jaccard(pt1.predicted.multi, pt1.true.multi[, 104:117])
 
 
 #--------------------------------------------------------------------------------------------------
@@ -309,7 +321,7 @@ rpart.rules(pt2.cart,cover = T)
 #Selezioniamo il CP col numero minimo k di split che garantisce un errore relativo accettabile,
 #Scegliamo il minimo k tale che relerror+xstd < xerror
 #Nel nostro caso k=1 (ovvero size of tree=2).
-best.cp <- pt2.cart$cptable[2,"CP"]
+best.cp <- pt2.cart$cptable[1,"CP"]
 #Effettuiamo il pruning dell'albero con CP associato
 pt2.cart.pruned <- prune(pt2.cart, cp=best.cp)
 #Visualizziamo l'albero ottenuto
@@ -333,7 +345,25 @@ cart.pruned.results <- data.frame(real=true.classes,predicted=cart.predict.prune
 cart.accuracy <- sum(cart.results$real==cart.results$predicted)/nrow(cart.results)
 cart.pruned.accuracy <- sum(cart.pruned.results$real==cart.pruned.results$predicted)/nrow(cart.pruned.results)
 
+
+# Data conversion from single-lable to multi-lable format
+
+# converts pt1 predicted data to multi-label formal
+pt2.predicted.multi <- data.frame(matrix(nrow=nrow(cart.pruned.results), ncol=14))
+for(i in 1:nrow(cart.pruned.results)){
+  pt2.predicted.multi[i,] <- 0
+  pt2.predicted.multi[i, as.numeric(as.character(cart.pruned.results[i,2]))] <- 1
+}
+
+
+# JACCARD SIMILARITY
+
+pt2.true.multi <- data[-sampled.pos,]
+jaccard <- calculate.jaccard(pt2.predicted.multi, pt2.true.multi[, 104:117])
+
 #-----------------------------------------------------------------------------------------------
+
+
 
 # CART on PT3
 
@@ -341,13 +371,13 @@ pt3.data.2 <- pt3.data[, -104:-ncol(pt3.data)]
 
 
 for(i in 1:nrow(pt3.data.2)){
-  
+
   #get all the values of the labels of the current row
-  row.labels <- as.numeric(pt3.data[i, 104:ncol(pt3.data)]) 
-  
+  row.labels <- as.numeric(pt3.data[i, 104:ncol(pt3.data)])
+
   #get only the label that is set as 1 of the current row
   row.correct.label <- as.numeric(which(row.labels==1))
-  
+
   #add the new class label column
   pt3.data.2[i, "Class"] <- as.character(row.correct.label)  #pt1_data[i,(pt1_data[1, ]) == 1] #paste("Class", pt1_data[i, ], sep="")
 
@@ -377,7 +407,7 @@ library(rpart.plot)
 #Vogliamo classificare la tipologia di tumore (campo "Class" in funzione degli altri attributi)
 #cp = “value” is the assigned a numeric value that will determine how deep you want your tree to grow.
 #The smaller the value (closer to 0), the larger the tree. The default value is 0.01, which will render a very pruned tree.
-pt3.cart <- rpart(Class ~ ., data = pt3.training,  cp = 0.001) 
+pt3.cart <- rpart(Class ~ ., data = pt3.training,  cp = 0.001)
 
 #Stampo l'albero decisionale ottenuto in forma testuale
 pt3.cart
@@ -401,12 +431,12 @@ plotcp(pt3.cart)
 
 rpart.rules(pt3.cart,cover = T)
 
-#PRUNING 
+#PRUNING
 
 #Selezioniamo il CP col numero minimo k di split che garantisce un errore relativo accettabile,
 #Scegliamo il minimo k tale che relerror+xstd < xerror
 #Nel nostro caso k=1 (ovvero size of tree=2).
-best.cp <- pt3.cart$cptable[20,"CP"]
+best.cp <- pt3.cart$cptable[6,"CP"]
 #Effettuiamo il pruning dell'albero con CP associato
 pt3.cart.pruned <- prune(pt3.cart, cp=best.cp)
 #Visualizziamo l'albero ottenuto
@@ -415,7 +445,7 @@ rpart.plot(pt3.cart.pruned, type = 0, extra = 104)
 rpart.rules(pt3.cart.pruned,cover = T)
 
 
-# ACCURACY 
+# ACCURACY
 
 #Predico le classi sul test set
 #Restituisci una tabella con le probabilit? di appartenere ad ognuna delle classi
@@ -429,6 +459,41 @@ cart.pruned.results <- data.frame(real=true.classes,predicted=cart.predict.prune
 #Calcoliamo l'accuratezza
 cart.accuracy <- sum(cart.results$real==cart.results$predicted)/nrow(cart.results)
 cart.pruned.accuracy <- sum(cart.pruned.results$real==cart.pruned.results$predicted)/nrow(cart.pruned.results)
+
+
+
+# Data conversion from single-lable to multi-lable format
+
+pt3.predicted.multi <- data.frame(matrix(nrow=nrow(cart.pruned.results), ncol=14))
+pt3.classes <- pt3.data[104:ncol(pt3.data)]
+
+for(i in 1:nrow(cart.pruned.results)){
+  pt3.predicted.multi[i,] <- 0
+  
+  # condition check selected column name in pt3.data
+  for(j in 1:14){
+    if(grepl( paste('class', paste(as.character(j), '_', sep=''), sep=''), names(pt3.classes)[as.numeric(as.character(cart.pruned.results[i,2]))])){
+      pt3.predicted.multi[i, j] <- 1
+    }
+  }
+}
+
+
+
+
+# converts pt1 predicted data to multi-label formal
+pt3.predicted.multi <- data.frame(matrix(nrow=nrow(cart.pruned.results), ncol=ncol(pt3.data[, -1:-103])))
+for(i in 1:nrow(cart.pruned.results)){
+  pt3.predicted.multi[i,] <- 0
+  pt3.predicted.multi[i, as.numeric(as.character(cart.pruned.results[i,2]))] <- 1
+}
+
+
+# JACCARD SIMILARITY
+
+pt3.true.multi <- data[-sampled.pos,]
+jaccard <- calculate.jaccard(pt3.predicted.multi, pt3.true.multi[, -1:-103])
+
 
 #--------------------------------------------------------------------------------------------------
 
