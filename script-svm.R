@@ -1,0 +1,259 @@
+# read from file
+library(foreign)
+data <- read.arff("yeast.arff")
+
+
+# PT1, PT2, PT3 implementations. PT = problem transformation from multi-lable to single-lable
+
+# PT1
+
+pt1.data <- data
+
+for (i in 1:nrow(pt1.data)){
+  
+  #get all the values of the labels of the current row
+  row.labels <- as.numeric(pt1.data[i, 104:117]) - 1
+  
+  #get only the labels that are set as 1 of the current row
+  row.correct.labels <- as.vector(which(row.labels==1))
+  
+  
+  # select random label
+  new.label <- sample(row.correct.labels, 1)
+  
+  # assign the new label to the row
+  pt1.data[i, 104:117] <- 0
+  pt1.data[i, 103+new.label] <- 1
+}
+
+
+
+# PT2
+
+pt2.data <- pt1.data
+
+# gets the first 14 unique rows based on the labels only
+pt2.data <- pt1.data[!duplicated(pt1.data[, 104:117]), ]
+
+
+
+# PT3
+
+pt3.data <- data
+
+for (i in 1:nrow(pt3.data)){
+  
+  
+  #get all the values of the labels of the current row
+  row.labels <- as.numeric(pt3.data[i, 104:117]) - 1
+  
+  #get only the labels that are set as 1 of the current row
+  row.correct.labels <- as.vector(which(row.labels==1))
+  
+  col.name <- ''
+  c <- 1
+  for(j in row.correct.labels){
+    temp <- paste('∩', paste('class' , as.character(j), sep = ''), sep = '')
+    if(c == 1) temp <- paste('class' , as.character(j), sep = '')
+    col.name <- paste(col.name, temp, sep = '')
+    # added
+    col.name <- paste(col.name, '_', sep = '')
+    c <- c+1
+    
+    print(j)
+  }
+  
+  # add new column made up of label set of the instance
+  pt3.data[i, col.name] <- 1
+  
+}
+
+# remove old label columns
+pt3.data <- pt3.data[, -104:-117]
+
+
+pt3.data[is.na(pt3.data)] <- 0
+
+
+
+# PT4
+
+pt4.data <- data[, -104:-117]
+
+tmp.data <- data[, 104:117]
+
+for(i in 1:14){
+  colnames(tmp.data)[which(names(tmp.data) == paste("Class", as.character(i), sep=""))] <- paste("Class", as.character(i), sep="")
+}
+
+
+for(i in 1:14){
+  pt4.data[paste("Class", as.character(i), sep='')] <- (data[paste("Class", as.character(i), sep='')])
+  pt4.data[paste("⌐Class", as.character(i), sep='')] <- (data[paste("Class", as.character(i), sep='')])
+}
+
+
+# Binary Relevance 
+
+# create n different datasets each containing only one label,
+# where n is the number of total labels of the original dataset
+
+br.data <- list()
+arr <- list()
+for(i in 1:14){
+  column <- paste('Class', i, sep = '')
+  arr[[i]] <- data[column]
+  br.data[[i]] <- data[-104:-117]
+  br.data[[i]][column] <- arr[[i]]
+}
+
+
+# Data transformation from multi-label format to single-label format
+
+# PT1
+
+pt1.data.2 <- pt1.data[, -104:-117]
+
+for(i in 1:nrow(pt1.data.2 )){
+  
+  #get all the values of the labels of the current row
+  row.labels <- as.numeric(pt1.data[i, 104:117]) - 1
+  
+  #get only the label that is set as 1 of the current row
+  row.correct.label <- as.numeric(which(row.labels==1))
+  
+  #add the new class label column
+  pt1.data.2[i, "Class"] <- as.character(row.correct.label)  #pt1_data[i,(pt1_data[1, ]) == 1] #paste("Class", pt1_data[i, ], sep="")
+}
+
+
+# PT2
+
+pt2.data.2 <- pt2.data[, -104:-117]
+
+for(i in 1:nrow(pt2.data.2 )){
+  
+  #get all the values of the labels of the current row
+  row.labels <- as.numeric(pt2.data[i, 104:117]) - 1
+  
+  #get only the label that is set as 1 of the current row
+  row.correct.label <- as.numeric(which(row.labels==1))
+  
+  #add the new class label column
+  pt2.data.2 [i, "Class"] <- as.character(row.correct.label)  #pt1_data[i,(pt1_data[1, ]) == 1] #paste("Class", pt1_data[i, ], sep="")
+}
+
+
+# PT3
+
+pt3.data.2 <- pt3.data[, -104:-ncol(pt3.data)]
+
+for(i in 1:nrow(pt3.data.2)){
+  
+  #get all the values of the labels of the current row
+  row.labels <- as.numeric(pt3.data[i, 104:ncol(pt3.data)])
+  
+  #get only the label that is set as 1 of the current row
+  row.correct.label <- as.numeric(which(row.labels==1))
+  
+  #add the new class label column
+  pt3.data.2[i, "Class"] <- as.character(row.correct.label)  #pt1_data[i,(pt1_data[1, ]) == 1] #paste("Class", pt1_data[i, ], sep="")
+  
+}
+
+
+#Separiamo i dati in due partizioni: training (75%) e test set (25%) con tuple scelte a caso
+perc.splitting <- 0.75
+#Calcoliamo il numero di tuple nel training set
+nobs.training <- round(perc.splitting*nrow(pt1.data.2))
+#Campioniamo in maniera RANDOM le tuple
+sampled.pos <- sample(1:nrow(pt1.data.2),nobs.training)
+#Effettuiamo il partizionamento
+pt1.training <- pt1.data.2[sampled.pos,]
+pt1.testing <- pt1.data.2[-sampled.pos,]
+#Nascondiamo la classe di appartenenza nel test set
+true.classes <- pt1.testing[,104]
+pt1.testing <- pt1.testing[,-104]
+
+
+# SVM on PT1
+
+#Carico la libreria e1071
+library(e1071)
+
+#Addestro il classificatore
+#I kernel supportati sono linear, polynomial, radial, sigmoid
+#Proviamo tutti i kernel (default="radial")
+pt1.svm <- svm(Class ~ ., data = pt1.training, probability=T, type="C")
+pt1.svm.linear <- svm(Class ~ ., data = pt1.training, kernel="linear", type="C")
+pt1.svm.polynomial <- svm(Class ~ ., data = pt1.training, kernel="polynomial", type="C")
+pt1.svm.sigmoid <- svm(Class ~ ., data = pt1.training, kernel="sigmoid", type="C")
+
+#Visualizzo i parametri del modello
+pt1.svm
+
+#Predico le classi sul test set per ogni modello costruito
+svm.predict <- predict(pt1.svm,pt1.testing,type="class")
+svm.predict.linear <- predict(pt1.svm.linear,pt1.testing,type="class")
+svm.predict.polynomial <- predict(pt1.svm.polynomial,pt1.testing,type="class")
+svm.predict.sigmoid <- predict(pt1.svm.sigmoid,pt1.testing,type="class")
+
+#Confrontiamo classe predetta con classe reale
+#Il vettore delle predizioni stavolta non contiene i valori NA, quindi ? pi? corto del vettore delle classi reali
+#Selezioniamo solo le classi delle entry per cui abbiamo la classe predetta
+#Le osservazioni contenenti NA non sono state predette, dunque consideriamo solo quelle
+#che non contengono NA per calcolare l'accuratezza
+svm.results <- data.frame(real=true.classes,predicted=svm.predict)
+svm.results.linear <- data.frame(real=true.classes,predicted=svm.predict.linear)
+svm.results.polynomial <- data.frame(real=true.classes,predicted=svm.predict.polynomial)
+svm.results.sigmoid <- data.frame(real=true.classes,predicted=svm.predict.sigmoid)
+
+#Calcoliamo l'accuratezza
+svm.accuracy <- sum(svm.results$real==svm.results$predicted)/nrow(svm.results)
+svm.accuracy.linear <- sum(svm.results.linear$real==svm.results.linear$predicted)/nrow(svm.results.linear)
+svm.accuracy.polynomial <- sum(svm.results.polynomial$real==svm.results.polynomial$predicted)/nrow(svm.results.polynomial)
+svm.accuracy.sigmoid <- sum(svm.results.sigmoid$real==svm.results.sigmoid$predicted)/nrow(svm.results.sigmoid)
+
+#L'accuratezza maggiore la otteniamo nel caso lineare e radiale
+#Scegliamo il modello lineare come riferimento
+svm.accuracy <- svm.accuracy.polynomial
+
+#Per avere le probabilit? di appartenenza ad ogni classe dobbiamo prima rieseguire
+#SVM settando il parametro "probability" a TRUE e poi settare a TRUE il parametro
+#probability del metodo predict specifico per SVM
+pt1.svm.2 <- svm(Class ~ ., data = pt1.training, probability=T, type="C")
+predict(pt1.svm.2, pt1.testing, probability=T)
+
+# Data conversion from single-lable to multi-lable format
+
+# converts pt1 predicted data to multi-label formal
+pt1.predicted.multi <- data.frame(matrix(nrow=nrow(svm.results.sigmoid), ncol=14))
+for(i in 1:nrow(svm.results.sigmoid)){
+  pt1.predicted.multi[i,] <- 0
+  pt1.predicted.multi[i, as.numeric(as.character(svm.results.sigmoid[i,2]))] <- 1
+}
+
+# JACCARD SIMILARITY
+
+# calculate jaccard similarity of data in multi-label format
+calculate.jaccard <- function(predicted.data.classes, true.data.classes){
+  total.jaccard <- 0
+  row.jaccard <- 0
+  for(i in 1:nrow(true.data.classes)){
+    a <- 0
+    b <- 0
+    c <- 0
+    for(j in 1:ncol(true.data.classes)){
+      if((true.data.classes[i,j] == predicted.data.classes[i,j]) && predicted.data.classes[i,j] == 1) {a <- a+1}
+      else if(true.data.classes[i,j] == 0 && predicted.data.classes[i,j] == 1) {b <- b+1}
+      else if(true.data.classes[i,j] == 1 && predicted.data.classes[i,j] == 0) {c <- c+1}
+    }
+    print(a / (a + b + c))
+    row.jaccard <- a / (a + b + c)
+    total.jaccard <- total.jaccard + row.jaccard
+  }
+  return (total.jaccard / nrow(true.data.classes))
+}
+
+pt1.true.multi <- data[-sampled.pos,]
+jaccard <- calculate.jaccard(pt1.predicted.multi, pt1.true.multi[, 104:117])

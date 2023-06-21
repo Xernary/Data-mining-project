@@ -245,7 +245,7 @@ calculate.jaccard <- function(predicted.data.classes, true.data.classes){
     row.jaccard <- a / (a + b + c)
     total.jaccard <- total.jaccard + row.jaccard
   }
-  return (total.jaccard / nrow(data.true.classes))
+  return (total.jaccard / nrow(true.data.classes))
 }
 
 pt1.true.multi <- data[-sampled.pos,]
@@ -256,7 +256,7 @@ jaccard <- calculate.jaccard(pt1.predicted.multi, pt1.true.multi[, 104:117])
 
 # CART on PT2
 
-pt2.data.2 <- pt2_data[, -104:-117]
+pt2.data.2 <- pt2.data[, -104:-117]
 
 for(i in 1:nrow(pt2.data.2 )){
   
@@ -481,7 +481,7 @@ for(i in 1:nrow(cart.pruned.results)){
 
 
 
-# converts pt1 predicted data to multi-label formal
+# converts pt3 predicted data to multi-label formal
 pt3.predicted.multi <- data.frame(matrix(nrow=nrow(cart.pruned.results), ncol=ncol(pt3.data[, -1:-103])))
 for(i in 1:nrow(cart.pruned.results)){
   pt3.predicted.multi[i,] <- 0
@@ -499,7 +499,86 @@ jaccard <- calculate.jaccard(pt3.predicted.multi, pt3.true.multi[, -1:-103])
 
 
 # CART on PT4 (not applicable because instances have more than one label)
+# PT4 is the exact same as Binary Relevance, the data is just represented in multi-label format in pt4 
 
 library(e1071)
+
+
+# SVM on Binary Relevance 
+
+br.predicted.multi <- data.frame(matrix(nrow=nrow(cart.pruned.results), ncol=14))
+
+for(i in 14:14){
+  current <- data.frame(br.data[i])
+  colnames(current)[104] <- "Class"
+  #Separiamo i dati in due partizioni: training (75%) e test set (25%) con tuple scelte a caso
+  perc.splitting <- 0.75
+  #Calcoliamo il numero di tuple nel training set
+  nobs.training <- round(perc.splitting*nrow(current))
+  #Campioniamo in maniera RANDOM le tuple
+  sampled.pos <- sample(1:nrow(current),nobs.training)
+  #Effettuiamo il partizionamento
+  br.training <- current[sampled.pos,]
+  br.testing <- current[-sampled.pos,]
+  #Nascondiamo la classe di appartenenza nel test set
+  true.classes <- br.testing[,104]
+  br.testing <- br.testing[,-104]
+  
+  
+  # SVM on PT1
+  
+  #Carico la libreria e1071
+  library(e1071)
+  
+  #Addestro il classificatore
+  #I kernel supportati sono linear, polynomial, radial, sigmoid
+  #Proviamo tutti i kernel (default="radial")
+  br.svm <- svm(Class ~ ., data = br.training, probability=T, type="C")
+  br.svm.linear <- svm(Class ~ ., data = br.training, kernel="linear", type="C")
+  br.svm.polynomial <- svm(Class ~ ., data = br.training, kernel="polynomial", type="C")
+  br.svm.sigmoid <- svm(Class ~ ., data = br.training, kernel="sigmoid", type="C")
+  
+  #Visualizzo i parametri del modello
+  br.svm
+  
+  #Predico le classi sul test set per ogni modello costruito
+  svm.predict <- predict(br.svm,br.testing,type="class")
+  svm.predict.linear <- predict(br.svm.linear,br.testing,type="class")
+  svm.predict.polynomial <- predict(br.svm.polynomial,br.testing,type="class")
+  svm.predict.sigmoid <- predict(br.svm.sigmoid,br.testing,type="class")
+  
+  #Confrontiamo classe predetta con classe reale
+  #Il vettore delle predizioni stavolta non contiene i valori NA, quindi ? pi? corto del vettore delle classi reali
+  #Selezioniamo solo le classi delle entry per cui abbiamo la classe predetta
+  #Le osservazioni contenenti NA non sono state predette, dunque consideriamo solo quelle
+  #che non contengono NA per calcolare l'accuratezza
+  svm.results <- data.frame(real=true.classes,predicted=svm.predict)
+  svm.results.linear <- data.frame(real=true.classes,predicted=svm.predict.linear)
+  svm.results.polynomial <- data.frame(real=true.classes,predicted=svm.predict.polynomial)
+  svm.results.sigmoid <- data.frame(real=true.classes,predicted=svm.predict.sigmoid)
+  
+  #Calcoliamo l'accuratezza
+  svm.accuracy <- sum(svm.results$real==svm.results$predicted)/nrow(svm.results)
+  svm.accuracy.linear <- sum(svm.results.linear$real==svm.results.linear$predicted)/nrow(svm.results.linear)
+  svm.accuracy.polynomial <- sum(svm.results.polynomial$real==svm.results.polynomial$predicted)/nrow(svm.results.polynomial)
+  svm.accuracy.sigmoid <- sum(svm.results.sigmoid$real==svm.results.sigmoid$predicted)/nrow(svm.results.sigmoid)
+  
+  #L'accuratezza maggiore la otteniamo nel caso lineare e radiale
+  #Scegliamo il modello lineare come riferimento
+  svm.accuracy <- svm.accuracy.polynomial
+  
+  #Per avere le probabilit? di appartenenza ad ogni classe dobbiamo prima rieseguire
+  #SVM settando il parametro "probability" a TRUE e poi settare a TRUE il parametro
+  #probability del metodo predict specifico per SVM
+  br.svm.2 <- svm(Class ~ ., data = br.training, probability=T, type="C")
+  predict(br.svm.2, br.testing, probability=T)
+  
+  
+}
+
+
+br.true.multi <- data[-sampled.pos,]
+jaccard <- calculate.jaccard(br.predicted.multi, br.true.multi[, 104:117])
+
 
 
