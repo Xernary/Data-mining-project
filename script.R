@@ -60,7 +60,7 @@ for (i in 1:nrow(pt3.data)){
     col.name <- paste(col.name, '_', sep = '')
     c <- c+1
     
-    print(j)
+    #print(j)
   }
 
   # add new column made up of label set of the instance
@@ -108,11 +108,6 @@ for(i in 1:14){
 }
 
 
-
-# Label Power Set
-
-# to do
-
 #-----------------------------------------------------------------------------------------
 
 # Classification CART
@@ -135,42 +130,28 @@ for(i in 1:nrow(pt1.data.2 )){
 
 
 
-
-#Separiamo i dati in due partizioni: training (75%) e test set (25%) con tuple scelte a caso
+# Partitioning and sampling training and testing data
 perc.splitting <- 0.75
-#Calcoliamo il numero di tuple nel training set
 nobs.training <- round(perc.splitting*nrow(pt1.data.2))
-#Campioniamo in maniera RANDOM le tuple
 sampled.pos <- sample(1:nrow(pt1.data.2),nobs.training)
-#Effettuiamo il partizionamento
 pt1.training <- pt1.data.2[sampled.pos,]
 pt1.testing <- pt1.data.2[-sampled.pos,]
-#Nascondiamo la classe di appartenenza nel test set
 true.classes <- pt1.testing[,104]
 pt1.testing <- pt1.testing[,-104]
 
-idk<-pt1.data.2[-sampled.pos,]
 
 
 #1) CART
 
-#Carico le libreria necessaria
 library(rpart)
-#Carichiamo anche rpart.plot per la visualizzazione
 library(rpart.plot)
 
 #cp = “value” is the assigned a numeric value that will determine how deep you want your tree to grow.
 #The smaller the value (closer to 0), the larger the tree. The default value is 0.01, which will render a very pruned tree.
 pt1.cart <- rpart(Class ~ ., data = pt1.training,  cp = 0.001) 
 
-#Stampo l'albero decisionale ottenuto in forma testuale
 pt1.cart
-#Per avere maggiori informazioni pi? accurate si pu? usare il metodo "printcp"
-#che mostra anche il cost-complexity pruning (CP)
-#nsplit ? il numero di split necessari per arrivare ad un nodo dell'albero
-#relerror ? l'errore relativo
-#xerror e xstd sono media e deviazione standard del cross-validation error
-#(rpart effettua al suo interno una cross-validation)
+
 printcp(pt1.cart)
 
 rpart.plot(pt1.cart)
@@ -180,21 +161,15 @@ rpart.plot(pt1.cart, type = 0, extra = 104)
 # cp and error info
 pt1.cart$cptable
 
-
-
 plotcp(pt1.cart)
 
 rpart.rules(pt1.cart,cover = T)
 
 #PRUNING 
 
-#Selezioniamo il CP col numero minimo k di split che garantisce un errore relativo accettabile,
-#Scegliamo il minimo k tale che relerror+xstd < xerror
-#Nel nostro caso k=1 (ovvero size of tree=2).
+# Choosing best CP (relerror+xstd < xerror)
 best.cp <- pt1.cart$cptable[2,"CP"]
-#Effettuiamo il pruning dell'albero con CP associato
 pt1.cart.pruned <- prune(pt1.cart, cp=best.cp)
-#Visualizziamo l'albero ottenuto
 rpart.plot(pt1.cart.pruned, type = 0, extra = 104)
 
 rpart.rules(pt1.cart.pruned,cover = T)
@@ -202,16 +177,12 @@ rpart.rules(pt1.cart.pruned,cover = T)
 
 # ACCURACY 
 
-#Predico le classi sul test set
-#Restituisci una tabella con le probabilit? di appartenere ad ognuna delle classi
+
 predict(pt1.cart.pruned, pt1.testing)
-#Restituisci la classe pi? probabile. Usiamo il metodo generale di predizione
 cart.predict <- predict(pt1.cart,pt1.testing,type="class")
 cart.predict.pruned <- predict(pt1.cart.pruned,pt1.testing,type="class")
-#Confrontiamo classe predetta con classe reale
 cart.results <- data.frame(real=true.classes,predicted=cart.predict)
 cart.pruned.results <- data.frame(real=true.classes,predicted=cart.predict.pruned)
-#Calcoliamo l'accuratezza
 cart.accuracy <- sum(c==cart.results$predicted)/nrow(cart.results)
 cart.pruned.accuracy <- sum(cart.pruned.results$real==cart.pruned.results$predicted)/nrow(cart.pruned.results)
 
@@ -241,7 +212,6 @@ calculate.jaccard <- function(predicted.data.classes, true.data.classes){
       else if(true.data.classes[i,j] == 0 && predicted.data.classes[i,j] == 1) {b <- b+1}
       else if(true.data.classes[i,j] == 1 && predicted.data.classes[i,j] == 0) {c <- c+1}
     }
-    print(a / (a + b + c))
     row.jaccard <- a / (a + b + c)
     total.jaccard <- total.jaccard + row.jaccard
   }
@@ -249,7 +219,7 @@ calculate.jaccard <- function(predicted.data.classes, true.data.classes){
 }
 
 pt1.true.multi <- data[-sampled.pos,]
-jaccard <- calculate.jaccard(pt1.predicted.multi, pt1.true.multi[, 104:117])
+pt1.jaccard <- calculate.jaccard(pt1.predicted.multi, pt1.true.multi[, 104:117])
 
 
 #--------------------------------------------------------------------------------------------------
@@ -289,19 +259,12 @@ pt2.testing <- pt2.testing[,-104]
 #1) CART
 
 
-#Vogliamo classificare la tipologia di tumore (campo "Class" in funzione degli altri attributi)
 #cp = “value” is the assigned a numeric value that will determine how deep you want your tree to grow.
 #The smaller the value (closer to 0), the larger the tree. The default value is 0.01, which will render a very pruned tree.
 pt2.cart <- rpart(Class ~ ., data = pt2.training,  cp = 0.001)
 
-#Stampo l'albero decisionale ottenuto in forma testuale
 pt2.cart
-#Per avere maggiori informazioni pi? accurate si pu? usare il metodo "printcp"
-#che mostra anche il cost-complexity pruning (CP)
-#nsplit ? il numero di split necessari per arrivare ad un nodo dell'albero
-#relerror ? l'errore relativo
-#xerror e xstd sono media e deviazione standard del cross-validation error
-#(rpart effettua al suo interno una cross-validation)
+
 printcp(pt2.cart)
 
 rpart.plot(pt2.cart, box.palette="Blues")
@@ -318,13 +281,9 @@ rpart.rules(pt2.cart,cover = T)
 
 #PRUNING 
 
-#Selezioniamo il CP col numero minimo k di split che garantisce un errore relativo accettabile,
-#Scegliamo il minimo k tale che relerror+xstd < xerror
-#Nel nostro caso k=1 (ovvero size of tree=2).
+# Choosing best CP (relerror+xstd < xerror)
 best.cp <- pt2.cart$cptable[1,"CP"]
-#Effettuiamo il pruning dell'albero con CP associato
 pt2.cart.pruned <- prune(pt2.cart, cp=best.cp)
-#Visualizziamo l'albero ottenuto
 rpart.plot(pt2.cart.pruned, type = 0, extra = 104, box.palette="Blues")
 
 rpart.rules(pt2.cart.pruned,cover = T)
@@ -332,16 +291,11 @@ rpart.rules(pt2.cart.pruned,cover = T)
 
 # ACCURACY 
 
-#Predico le classi sul test set
-#Restituisci una tabella con le probabilit? di appartenere ad ognuna delle classi
 predict(pt2.cart.pruned, pt2.testing)
-#Restituisci la classe pi? probabile. Usiamo il metodo generale di predizione
 cart.predict <- predict(pt2.cart,pt2.testing,type="class")
 cart.predict.pruned <- predict(pt2.cart.pruned,pt2.testing,type="class")
-#Confrontiamo classe predetta con classe reale
 cart.results <- data.frame(real=true.classes,predicted=cart.predict)
 cart.pruned.results <- data.frame(real=true.classes,predicted=cart.predict.pruned)
-#Calcoliamo l'accuratezza
 cart.accuracy <- sum(cart.results$real==cart.results$predicted)/nrow(cart.results)
 cart.pruned.accuracy <- sum(cart.pruned.results$real==cart.pruned.results$predicted)/nrow(cart.pruned.results)
 
@@ -359,7 +313,7 @@ for(i in 1:nrow(cart.pruned.results)){
 # JACCARD SIMILARITY
 
 pt2.true.multi <- data[-sampled.pos,]
-jaccard <- calculate.jaccard(pt2.predicted.multi, pt2.true.multi[, 104:117])
+pt2.jaccard <- calculate.jaccard(pt2.predicted.multi, pt2.true.multi[, 104:117])
 
 #-----------------------------------------------------------------------------------------------
 
@@ -383,40 +337,27 @@ for(i in 1:nrow(pt3.data.2)){
 
 }
 
-#Separiamo i dati in due partizioni: training (75%) e test set (25%) con tuple scelte a caso
+# Partitioning and sampling training and testing data
 perc.splitting <- 0.75
-#Calcoliamo il numero di tuple nel training set
 nobs.training <- round(perc.splitting*nrow(pt3.data.2))
-#Campioniamo in maniera random le tuple
 sampled.pos <- sample(1:nrow(pt3.data.2),nobs.training)
-#Effettuiamo il partizionamento
 pt3.training <- pt3.data.2[sampled.pos,]
 pt3.testing <- pt3.data.2[-sampled.pos,]
-#Nascondiamo la classe di appartenenza nel test set
 true.classes <- pt3.testing[,104]
 pt3.testing <- pt3.testing[,-104]
 
 
 #1) CART
 
-#Carico le libreria necessaria
 library(rpart)
-#Carichiamo anche rpart.plot per la visualizzazione
 library(rpart.plot)
 
-#Vogliamo classificare la tipologia di tumore (campo "Class" in funzione degli altri attributi)
 #cp = “value” is the assigned a numeric value that will determine how deep you want your tree to grow.
 #The smaller the value (closer to 0), the larger the tree. The default value is 0.01, which will render a very pruned tree.
 pt3.cart <- rpart(Class ~ ., data = pt3.training,  cp = 0.001)
 
-#Stampo l'albero decisionale ottenuto in forma testuale
 pt3.cart
-#Per avere maggiori informazioni pi? accurate si pu? usare il metodo "printcp"
-#che mostra anche il cost-complexity pruning (CP)
-#nsplit ? il numero di split necessari per arrivare ad un nodo dell'albero
-#relerror ? l'errore relativo
-#xerror e xstd sono media e deviazione standard del cross-validation error
-#(rpart effettua al suo interno una cross-validation)
+
 printcp(pt3.cart)
 
 rpart.plot(pt3.cart)
@@ -433,13 +374,9 @@ rpart.rules(pt3.cart,cover = T)
 
 #PRUNING
 
-#Selezioniamo il CP col numero minimo k di split che garantisce un errore relativo accettabile,
-#Scegliamo il minimo k tale che relerror+xstd < xerror
-#Nel nostro caso k=1 (ovvero size of tree=2).
+# Choosing best CP (relerror+xstd < xerror)
 best.cp <- pt3.cart$cptable[6,"CP"]
-#Effettuiamo il pruning dell'albero con CP associato
 pt3.cart.pruned <- prune(pt3.cart, cp=best.cp)
-#Visualizziamo l'albero ottenuto
 rpart.plot(pt3.cart.pruned, type = 0, extra = 104)
 
 rpart.rules(pt3.cart.pruned,cover = T)
@@ -447,16 +384,11 @@ rpart.rules(pt3.cart.pruned,cover = T)
 
 # ACCURACY
 
-#Predico le classi sul test set
-#Restituisci una tabella con le probabilit? di appartenere ad ognuna delle classi
 predict(pt3.cart.pruned, pt3.testing)
-#Restituisci la classe pi? probabile. Usiamo il metodo generale di predizione
 cart.predict <- predict(pt3.cart,pt3.testing,type="class")
 cart.predict.pruned <- predict(pt3.cart.pruned,pt3.testing,type="class")
-#Confrontiamo classe predetta con classe reale
 cart.results <- data.frame(real=true.classes,predicted=cart.predict)
 cart.pruned.results <- data.frame(real=true.classes,predicted=cart.predict.pruned)
-#Calcoliamo l'accuratezza
 cart.accuracy <- sum(cart.results$real==cart.results$predicted)/nrow(cart.results)
 cart.pruned.accuracy <- sum(cart.pruned.results$real==cart.pruned.results$predicted)/nrow(cart.pruned.results)
 
@@ -492,7 +424,7 @@ for(i in 1:nrow(cart.pruned.results)){
 # JACCARD SIMILARITY
 
 pt3.true.multi <- data[-sampled.pos,]
-jaccard <- calculate.jaccard(pt3.predicted.multi, pt3.true.multi[, -1:-103])
+pt3.jaccard <- calculate.jaccard(pt3.predicted.multi, pt3.true.multi[, -1:-103])
 
 
 #--------------------------------------------------------------------------------------------------
@@ -508,79 +440,61 @@ library(e1071)
 
 br.predicted.multi <- data.frame(matrix(nrow=nrow(cart.pruned.results), ncol=14))
 
+# Do SVM for each different dataframe in br.data list, where every dataframe has only one 
+# of the 14 total classes
 for(i in 1:14){
+  # Splitting and sampling data
   current <- data.frame(br.data[i])
   colnames(current)[104] <- "Class"
-  #Separiamo i dati in due partizioni: training (75%) e test set (25%) con tuple scelte a caso
-  perc.splitting <- 0.75
   #Calcoliamo il numero di tuple nel training set
   nobs.training <- round(perc.splitting*nrow(current))
-  #Campioniamo in maniera RANDOM le tuple
   sampled.pos <- sample(1:nrow(current),nobs.training)
-  #Effettuiamo il partizionamento
   br.training <- current[sampled.pos,]
   br.testing <- current[-sampled.pos,]
-  #Nascondiamo la classe di appartenenza nel test set
   true.classes <- br.testing[,104]
   br.testing <- br.testing[,-104]
   
   
-  # SVM on PT1
+  # SVM
   
-  #Carico la libreria e1071
   library(e1071)
   
-  #Addestro il classificatore
-  #I kernel supportati sono linear, polynomial, radial, sigmoid
-  #Proviamo tutti i kernel (default="radial")
+  # Trying all the possible kernels
   br.svm <- svm(Class ~ ., data = br.training, probability=T, type="C")
   br.svm.linear <- svm(Class ~ ., data = br.training, kernel="linear", type="C")
   br.svm.polynomial <- svm(Class ~ ., data = br.training, kernel="polynomial", type="C")
   br.svm.sigmoid <- svm(Class ~ ., data = br.training, kernel="sigmoid", type="C")
   
-  #Visualizzo i parametri del modello
   br.svm
   
-  #Predico le classi sul test set per ogni modello costruito
+  #Prediction
   svm.predict <- predict(br.svm,br.testing,type="class")
   svm.predict.linear <- predict(br.svm.linear,br.testing,type="class")
   svm.predict.polynomial <- predict(br.svm.polynomial,br.testing,type="class")
   svm.predict.sigmoid <- predict(br.svm.sigmoid,br.testing,type="class")
   
-  #Confrontiamo classe predetta con classe reale
-  #Il vettore delle predizioni stavolta non contiene i valori NA, quindi ? pi? corto del vettore delle classi reali
-  #Selezioniamo solo le classi delle entry per cui abbiamo la classe predetta
-  #Le osservazioni contenenti NA non sono state predette, dunque consideriamo solo quelle
-  #che non contengono NA per calcolare l'accuratezza
+  #Getting results
   svm.results <- data.frame(real=true.classes,predicted=svm.predict)
   svm.results.linear <- data.frame(real=true.classes,predicted=svm.predict.linear)
   svm.results.polynomial <- data.frame(real=true.classes,predicted=svm.predict.polynomial)
   svm.results.sigmoid <- data.frame(real=true.classes,predicted=svm.predict.sigmoid)
   
-  #Calcoliamo l'accuratezza
+  #Accuracy
   svm.accuracy <- sum(svm.results$real==svm.results$predicted)/nrow(svm.results)
   svm.accuracy.linear <- sum(svm.results.linear$real==svm.results.linear$predicted)/nrow(svm.results.linear)
   svm.accuracy.polynomial <- sum(svm.results.polynomial$real==svm.results.polynomial$predicted)/nrow(svm.results.polynomial)
   svm.accuracy.sigmoid <- sum(svm.results.sigmoid$real==svm.results.sigmoid$predicted)/nrow(svm.results.sigmoid)
   
-  #L'accuratezza maggiore la otteniamo nel caso lineare e radiale
-  #Scegliamo il modello lineare come riferimento
-  svm.accuracy <- svm.accuracy.polynomial
-  
-  #Per avere le probabilit? di appartenenza ad ogni classe dobbiamo prima rieseguire
-  #SVM settando il parametro "probability" a TRUE e poi settare a TRUE il parametro
-  #probability del metodo predict specifico per SVM
-  br.svm.2 <- svm(Class ~ ., data = br.training, probability=T, type="C")
-  predict(br.svm.2, br.testing, probability=T)
-  
+  #Choosing the results with the higher accuracy value
+  best.svm.results <- svm.results.polynomial
  
   br.predicted.multi[, i] <- 0
-  br.predicted.multi[, i] <- svm.results.polynomial[, 2]
+  br.predicted.multi[, i] <- best.svm.results[, 2]
 }
 
 
 br.true.multi <- data[-sampled.pos, ]
-jaccard <- calculate.jaccard(br.predicted.multi, br.true.multi[, 104:117])
+br.jaccard <- calculate.jaccard(br.predicted.multi, br.true.multi[, 104:117])
 
 
 
