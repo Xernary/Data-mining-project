@@ -508,7 +508,7 @@ library(e1071)
 
 br.predicted.multi <- data.frame(matrix(nrow=nrow(cart.pruned.results), ncol=14))
 
-for(i in 14:14){
+for(i in 1:14){
   current <- data.frame(br.data[i])
   colnames(current)[104] <- "Class"
   #Separiamo i dati in due partizioni: training (75%) e test set (25%) con tuple scelte a caso
@@ -573,11 +573,13 @@ for(i in 14:14){
   br.svm.2 <- svm(Class ~ ., data = br.training, probability=T, type="C")
   predict(br.svm.2, br.testing, probability=T)
   
-  
+ 
+  br.predicted.multi[, i] <- 0
+  br.predicted.multi[, i] <- svm.results.polynomial[, 2]
 }
 
 
-br.true.multi <- data[-sampled.pos,]
+br.true.multi <- data[-sampled.pos, ]
 jaccard <- calculate.jaccard(br.predicted.multi, br.true.multi[, 104:117])
 
 
