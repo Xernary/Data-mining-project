@@ -56,11 +56,8 @@ for (i in 1:nrow(pt3.data)){
     temp <- paste('∩', paste('class' , as.character(j), sep = ''), sep = '')
     if(c == 1) temp <- paste('class' , as.character(j), sep = '')
     col.name <- paste(col.name, temp, sep = '')
-    # added
     col.name <- paste(col.name, '_', sep = '')
     c <- c+1
-    
-    #print(j)
   }
 
   # add new column made up of label set of the instance
@@ -141,7 +138,7 @@ pt1.testing <- pt1.testing[,-104]
 
 
 
-#1) CART
+# CART
 
 library(rpart)
 library(rpart.plot)
@@ -176,7 +173,6 @@ rpart.rules(pt1.cart.pruned,cover = T)
 
 
 # ACCURACY 
-
 
 predict(pt1.cart.pruned, pt1.testing)
 cart.predict <- predict(pt1.cart,pt1.testing,type="class")
@@ -247,7 +243,6 @@ for(i in 1:nrow(pt2.data.2 )){
 #only the 13 tuples with unique classes will be used for training (pt2.data.2)
 #the full dataset will be used as testing (pt1.data.2)
 perc.splitting <- 1
-#Calcoliamo il numero di tuple nel training set
 nobs.training <- round(perc.splitting*nrow(pt2.data.2))
 sampled.pos <- sample(1:nrow(pt2.data.2),nobs.training)
 pt2.training <- pt2.data.2[sampled.pos,]
@@ -256,7 +251,7 @@ true.classes <- pt2.testing[,104]
 pt2.testing <- pt2.testing[,-104]
 
 
-#1) CART
+# CART
 
 
 #cp = “value” is the assigned a numeric value that will determine how deep you want your tree to grow.
@@ -333,7 +328,7 @@ for(i in 1:nrow(pt3.data.2)){
   row.correct.label <- as.numeric(which(row.labels==1))
 
   #add the new class label column
-  pt3.data.2[i, "Class"] <- as.character(row.correct.label)  #pt1_data[i,(pt1_data[1, ]) == 1] #paste("Class", pt1_data[i, ], sep="")
+  pt3.data.2[i, "Class"] <- as.character(row.correct.label) 
 
 }
 
@@ -446,7 +441,6 @@ for(i in 1:14){
   # Splitting and sampling data
   current <- data.frame(br.data[i])
   colnames(current)[104] <- "Class"
-  #Calcoliamo il numero di tuple nel training set
   nobs.training <- round(perc.splitting*nrow(current))
   sampled.pos <- sample(1:nrow(current),nobs.training)
   br.training <- current[sampled.pos,]
